@@ -31,6 +31,14 @@ class ProtestsSpider(CrawlSpider):
         locs = soup.find_all('span', {'class': 'mw-headline'})
         descs = soup.find_all('p')
 
+        ref_routes = {}
+        ref_list = soup.find('ol', {'class': 'references'})
+        for li in ref_list.find_all('li'):
+            try:
+                ref_routes[li.attrs['id']] = li.find('span', {'class': 'Z3988'}).attrs['title']
+            except AttributeError:
+                pass
+
         diff = 0
         last_i = 0
         protests = []
@@ -39,13 +47,27 @@ class ProtestsSpider(CrawlSpider):
             for j in range(i, len(descs)):
                 if locs[i].text.strip() in descs[j].text.strip():
                     diff = j - i
-                    print(state[len('George Floyd protests in '):], diff)
 
                     for k in range(last_i, i + 1):
                         if locs[k].text not in WORDS_TO_IGNORE and len(locs[k].text) < 20:
                             try:
+                                refs = descs[k + diff].find_all('sup')
+                                ref_ids = []
+                                for ref in refs:
+                                    print(ref)
+                                    ref_ids.append(ref.find('a').attrs['href'][1:])
+
+                                current_refs = []
+                                for ref_id in ref_ids:
+                                    try:
+                                        current_refs.append(ref_routes[ref_id])
+                                    except KeyError:
+                                        pass
+
                                 protests.append({'loc': locs[k].text.strip(),
-                                                 'description': descs[k + diff].text.strip()})
+                                                 'description': descs[k + diff].text.strip(),
+                                                 'url': response.request.url,
+                                                 'refs': current_refs})
                             except IndexError:
                                 pass
                     
